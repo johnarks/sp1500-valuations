@@ -66,6 +66,7 @@ const COLS = [
   {k:'fair_value', label:'Fair Value', num:true, fmt:v=>v==null?'—':'$'+v.toFixed(2)},
   {k:'consensus_target', label:'Consensus', num:true, fmt:v=>v==null?'—':'$'+v.toFixed(2)},
   {k:'forward_pe', label:'Fwd P/E', num:true, fmt:v=>v==null?'—':v.toFixed(1)+'x'},
+  {k:'market_cap', label:'Market Cap', num:true, fmt:v=>{ if(v==null) return '—'; const a=Math.abs(v); return '$'+(a>=1e12?(v/1e12).toFixed(2)+'T':a>=1e9?(v/1e9).toFixed(1)+'B':(v/1e6).toFixed(0)+'M'); }},
 ];
 let rows = [], sortK = 'upside_pct', sortDir = -1;
 const $ = id => document.getElementById(id);
