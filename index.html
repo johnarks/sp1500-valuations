@@ -5,17 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>S&amp;P 1500 Valuation Board</title>
 <style>
-  :root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --text:#e6edf3; --dim:#8b949e; --green:#3fb950; --red:#f85149; --accent:#58a6ff; }
+  :root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --text:#e6edf3; --dim:#8b949e; --green:#3fb950; --red:#f85149; --accent:#58a6ff; --orange:#f5a623; --purple:#b388ff; }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
   header { padding:20px 24px 12px; border-bottom:1px solid var(--border); }
   header h1 { margin:0 0 4px; font-size:22px; }
   header p { margin:0; color:var(--dim); font-size:13px; }
-  .controls { display:flex; gap:12px; flex-wrap:wrap; padding:14px 24px; border-bottom:1px solid var(--border); background:var(--panel); position:sticky; top:0; z-index:5; }
+  #statsbar { display:flex; gap:14px; flex-wrap:wrap; padding:10px 24px; border-bottom:1px solid var(--border); background:var(--panel); font-size:13px; color:var(--dim); }
+  #statsbar b { color:var(--text); }
+  .controls { display:flex; gap:12px; flex-wrap:wrap; padding:14px 24px; border-bottom:1px solid var(--border); background:var(--panel); position:sticky; top:0; z-index:5; align-items:center; }
   .controls input, .controls select { background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:8px 10px; font-size:14px; }
-  .controls input { flex:1; min-width:200px; }
+  .controls input { flex:1; min-width:180px; }
+  .seg { display:flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .seg button { background:var(--bg); color:var(--dim); border:0; padding:8px 14px; font-size:14px; cursor:pointer; }
+  .seg button.on { background:var(--accent); color:#fff; font-weight:600; }
+  .seg button:disabled { opacity:.45; cursor:wait; }
   .count { margin-left:auto; align-self:center; color:var(--dim); font-size:13px; }
-  .wrap { overflow:auto; max-height:calc(100vh - 170px); }
+  .wrap { overflow:auto; max-height:calc(100vh - 210px); }
   table { border-collapse:collapse; width:100%; font-size:13px; }
   thead th { position:sticky; top:0; background:var(--panel); cursor:pointer; user-select:none; white-space:nowrap; padding:10px 12px; text-align:right; border-bottom:1px solid var(--border); z-index:2; }
   thead th:first-child, thead th:nth-child(2), thead th:nth-child(3) { text-align:left; }
@@ -23,17 +29,45 @@
   thead th .arrow { color:var(--accent); }
   tbody td { padding:8px 12px; border-bottom:1px solid var(--border); text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
   tbody td:first-child, tbody td:nth-child(2), tbody td:nth-child(3) { text-align:left; }
-  tbody tr:hover { background:#1c2128; }
+  tbody tr:hover { background:#1c2128; cursor:pointer; }
   .tick { font-weight:600; color:var(--accent); }
   .up { color:var(--green); font-weight:600; }
   .down { color:var(--red); font-weight:600; }
   .na { color:var(--dim); }
+  .sig { font-size:12px; white-space:nowrap; }
   .loading { padding:40px; text-align:center; color:var(--dim); }
   footer { padding:12px 24px; color:var(--dim); font-size:12px; border-top:1px solid var(--border); }
+  /* ---- charts grid ---- */
+  #gridview { display:none; padding:16px 24px; overflow:auto; max-height:calc(100vh - 210px); }
+  #gridview.show { display:block; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px; }
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:10px 12px; cursor:pointer; }
+  .card:hover { border-color:var(--accent); }
+  .ctop { display:flex; justify-content:space-between; align-items:center; }
+  .cname { color:var(--dim); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:2px 0 6px; }
+  .card canvas { width:100%; height:110px; display:block; }
+  .cbot { display:flex; justify-content:space-between; margin-top:6px; font-size:12px; }
+  .gridnote { color:var(--dim); font-size:12px; padding:8px 0 14px; }
+  /* ---- detail modal ---- */
+  #overlay { position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:1000; display:none; align-items:center; justify-content:center; padding:20px; }
+  #overlay.show { display:flex; }
+  #modal { background:var(--panel); border:1px solid var(--border); border-radius:12px; width:min(960px,96vw); max-height:94vh; overflow:auto; padding:18px 20px; }
+  #modal h2 { margin:0 0 2px; font-size:20px; }
+  #modal .msub { color:var(--dim); font-size:13px; margin-bottom:10px; }
+  #mstats { display:flex; gap:18px; flex-wrap:wrap; margin:8px 0 12px; font-size:13px; }
+  #mstats .lbl { color:var(--dim); display:block; font-size:11px; text-transform:uppercase; letter-spacing:.05em; }
+  #mstats .val { font-size:16px; font-weight:600; }
+  .mctl { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; align-items:center; }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--dim); margin:6px 0 4px; }
+  .sw { display:inline-block; width:22px; height:0; border-top:3px dashed; vertical-align:middle; margin-right:5px; }
+  #cprice { width:100%; height:300px; display:block; }
+  #crsi { width:100%; height:90px; display:block; }
+  #cinfo { font-size:12px; color:var(--dim); min-height:18px; margin-top:6px; font-variant-numeric:tabular-nums; }
+  #mclose { float:right; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:6px 12px; cursor:pointer; font-size:14px; }
 </style>
 </head>
 <body>
-<!-- META-SHARED-NAV v2 : back button + hamburger linking all Meta apps.
+<!-- META-SHARED-NAV v2 : back button + hamburger linking all Meta tools.
      Paste this block into every page (right after <body> is best). The
      META-SHARED-NAV marker lets future updates find/replace it. -->
 <div id="meta-nav">
@@ -79,9 +113,11 @@
 </script>
 <header>
   <h1>S&amp;P 1500 Valuation Board</h1>
-  <p>My target price for every S&amp;P 1500 stock — historical-multiple fair value vs analyst consensus. Data as of <span id="asof"></span>. Click any column header to sort.</p>
+  <p>My target price for every S&amp;P 1500 stock — historical-multiple fair value vs analyst consensus. Targets/fair values as of Sep 22, 2026; prices updated weekly. Click any row for the chart.</p>
 </header>
+<div id="statsbar"></div>
 <div class="controls">
+  <div class="seg" id="viewseg"><button data-v="table" class="on">☰ Table</button><button data-v="charts" id="chartsbtn" disabled title="Loading price history…">📊 Charts</button></div>
   <input id="search" type="text" placeholder="Search ticker or company…">
   <select id="sector"><option value="">All sectors</option></select>
   <select id="upside">
@@ -90,16 +126,77 @@
     <option value="neg">Downside only</option>
     <option value="high">Upside ≥ 20%</option>
   </select>
+  <select id="signal">
+    <option value="">All signals</option>
+    <option value="breakout">🚀 Breakouts</option>
+    <option value="closing">▲ Closing in</option>
+    <option value="neartarget">🎯 Near target</option>
+    <option value="drifting">▼ Drifting away</option>
+  </select>
   <span class="count" id="count"></span>
 </div>
-<div class="wrap">
+<div class="wrap" id="tablewrap">
   <table id="tbl">
     <thead><tr id="headrow"></tr></thead>
-    <tbody id="body"><tr><td colspan="9" class="loading">Loading 1,504 stocks…</td></tr></tbody>
+    <tbody id="body"><tr><td colspan="13" class="loading">Loading 1,504 stocks…</td></tr></tbody>
   </table>
 </div>
-<footer>Targets are model outputs (normal-multiple fair value blended with analyst consensus), not investment advice. Prices reflect the Sep 22, 2026 close.</footer>
+<div id="gridview"><div class="gridnote" id="gridnote"></div><div class="grid" id="grid"></div></div>
+<footer id="foot"></footer>
+
+<div id="overlay"><div id="modal">
+  <button id="mclose">✕ Close</button>
+  <h2 id="mtitle"></h2>
+  <div class="msub" id="msub"></div>
+  <div id="mstats"></div>
+  <div class="mctl">
+    <div class="seg" id="mrange"><button data-v="22" class="on">1M</button><button data-v="66">3M</button><button data-v="0">6M</button></div>
+    <div class="seg" id="mstyle"><button data-v="candle" class="on">Candles</button><button data-v="ha">Heikin-Ashi</button></div>
+  </div>
+  <div class="legend">
+    <span><span class="sw" style="border-color:#3fb950"></span>Fair value (my model)</span>
+    <span><span class="sw" style="border-color:#58a6ff"></span>My target</span>
+    <span><span class="sw" style="border-color:#f5a623"></span>MA20</span>
+    <span><span class="sw" style="border-color:#b388ff"></span>MA50</span>
+  </div>
+  <canvas id="cprice"></canvas>
+  <canvas id="crsi"></canvas>
+  <div id="cinfo"></div>
+</div></div>
+
 <script>
+/* ============ data ============ */
+let rows = [], sortK = 'upside_pct', sortDir = -1, VIEW = 'table';
+let HIST = null, HDATES = [], priceAsof = '';
+const $ = id => document.getElementById(id);
+const rowByTicker = {};
+
+function gapClosed(r){ // % of the distance from base price to my target already covered
+  if (r.target_price == null || r.base_price == null) return null;
+  const denom = r.target_price - r.base_price;
+  if (Math.abs(denom) < 1e-9) return null;
+  return (r.current_price - r.base_price) / denom * 100;
+}
+function wkChg(r){ // 5-trading-day % change
+  const b = HIST && HIST[r.ticker];
+  if (!b || b.length < 6) return null;
+  const now = b[b.length-1][3], ago = b[b.length-6][3];
+  if (!ago) return null;
+  return (now - ago) / ago * 100;
+}
+function signalOf(r){
+  const gc = gapClosed(r), wc = wkChg(r), up = r.upside_pct;
+  if (gc == null || up == null) return '';
+  const isUp = r.target_price > r.base_price;
+  if (!isUp) return gc >= 90 ? 'neartarget' : '';
+  if (gc >= 90) return 'neartarget';
+  if (gc >= 25 && wc != null && wc >= 5 && up >= 10) return 'breakout';
+  if (gc >= 15 || (wc != null && wc >= 3 && up >= 10)) return 'closing';
+  if (gc <= -10) return 'drifting';
+  return '';
+}
+const SIGNALS = { breakout:'🚀 Breakout', closing:'▲ Closing in', neartarget:'🎯 Near target', drifting:'▼ Drifting' };
+
 const COLS = [
   {k:'ticker', label:'Ticker', num:false},
   {k:'company', label:'Company', num:false},
@@ -107,34 +204,38 @@ const COLS = [
   {k:'current_price', label:'Price', num:true, fmt:v=>v==null?'—':'$'+v.toFixed(2)},
   {k:'target_price', label:'My Target', num:true, fmt:v=>v==null?'—':'$'+v.toFixed(2)},
   {k:'upside_pct', label:'Upside %', num:true, cls:v=>v==null?'na':(v>=0?'up':'down'), fmt:v=>v==null?'—':(v>=0?'+':'')+v.toFixed(1)+'%'},
+  {k:'_gap', label:'Gap closed %', num:true, val:r=>gapClosed(r), cls:v=>v==null?'na':(v>=25?'up':(v<0?'down':'')), fmt:v=>v==null?'—':v.toFixed(0)+'%'},
+  {k:'_wk', label:'1-wk %', num:true, val:r=>wkChg(r), cls:v=>v==null?'na':(v>=0?'up':'down'), fmt:v=>v==null?'…':(v>=0?'+':'')+v.toFixed(1)+'%'},
   {k:'fair_value', label:'Fair Value', num:true, fmt:v=>v==null?'—':'$'+v.toFixed(2)},
   {k:'consensus_target', label:'Consensus', num:true, fmt:v=>v==null?'—':'$'+v.toFixed(2)},
   {k:'forward_pe', label:'Fwd P/E', num:true, fmt:v=>v==null?'—':v.toFixed(1)+'x'},
   {k:'market_cap', label:'Market Cap', num:true, fmt:v=>{ if(v==null) return '—'; const a=Math.abs(v); return '$'+(a>=1e12?(v/1e12).toFixed(2)+'T':a>=1e9?(v/1e9).toFixed(1)+'B':(v/1e6).toFixed(0)+'M'); }},
+  {k:'_sig', label:'Signal', num:false, val:r=>signalOf(r), fmt:v=>v?('<span class="sig">'+SIGNALS[v]+'</span>'):'<span class="na">—</span>', html:true},
 ];
-let rows = [], sortK = 'upside_pct', sortDir = -1;
-const $ = id => document.getElementById(id);
+function cellVal(r,c){ return c.val ? c.val(r) : r[c.k]; }
 
-fetch('data.json').then(r=>r.json()).then(data=>{
-  rows = data;
-  $('asof').textContent = data[0]?.as_of || '';
-  const sectors = [...new Set(data.map(r=>r.sector).filter(Boolean))].sort();
-  sectors.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; $('sector').appendChild(o); });
-  render();
-});
 function filtered(){
   const q = $('search').value.trim().toLowerCase();
-  const sec = $('sector').value, up = $('upside').value;
+  const sec = $('sector').value, up = $('upside').value, sig = $('signal').value;
   return rows.filter(r=>{
     if (q && !(r.ticker.toLowerCase().includes(q) || (r.company||'').toLowerCase().includes(q))) return false;
     if (sec && r.sector !== sec) return false;
     if (up==='pos' && !(r.upside_pct>0)) return false;
     if (up==='neg' && !(r.upside_pct<0)) return false;
     if (up==='high' && !(r.upside_pct>=20)) return false;
+    if (sig && signalOf(r)!==sig) return false;
     return true;
   });
 }
+function sortedList(){
+  return filtered().sort((a,b)=>{
+    let x=cellVal(a,COLS.find(c=>c.k===sortK)), y=cellVal(b,COLS.find(c=>c.k===sortK));
+    if(x==null) return 1; if(y==null) return -1;
+    return (typeof x==='string' ? x.localeCompare(y) : x-y) * sortDir;
+  });
+}
 function render(){
+  if (VIEW === 'charts'){ renderGrid(); return; }
   const head = $('headrow'); head.innerHTML='';
   COLS.forEach(c=>{
     const th=document.createElement('th');
@@ -142,20 +243,17 @@ function render(){
     th.onclick=()=>{ if(sortK===c.k) sortDir*=-1; else {sortK=c.k; sortDir=c.num?-1:1;} render(); };
     head.appendChild(th);
   });
-  const list = filtered().sort((a,b)=>{
-    let x=a[sortK], y=b[sortK];
-    if(x==null) return 1; if(y==null) return -1;
-    return (typeof x==='string' ? x.localeCompare(y) : x-y) * sortDir;
-  });
+  const list = sortedList();
   $('count').textContent = list.length.toLocaleString() + ' stocks';
   const tb=$('body'); tb.innerHTML='';
   const frag=document.createDocumentFragment();
   list.forEach(r=>{
     const tr=document.createElement('tr');
+    tr.title='Click for chart'; tr.onclick=()=>openModal(r.ticker);
     COLS.forEach(c=>{
       const td=document.createElement('td');
-      const v=r[c.k];
-      td.textContent=c.fmt?c.fmt(v):(v??'—');
+      const v=cellVal(r,c);
+      if (c.html) td.innerHTML=c.fmt(v); else td.textContent=c.fmt?c.fmt(v):(v??'—');
       if(c.k==='ticker') td.className='tick';
       else if(c.cls) td.className=c.cls(v);
       tr.appendChild(td);
@@ -164,9 +262,213 @@ function render(){
   });
   tb.appendChild(frag);
 }
-$('search').addEventListener('input', render);
-$('sector').addEventListener('change', render);
-$('upside').addEventListener('change', render);
+function renderStats(){
+  let bo=0, cl=0, nt=0;
+  rows.forEach(r=>{ const s=signalOf(r); if(s==='breakout')bo++; else if(s==='closing')cl++; else if(s==='neartarget')nt++; });
+  $('statsbar').innerHTML =
+    `<span><b>${rows.length.toLocaleString()}</b> stocks tracked</span>`+
+    `<span>🚀 <b>${bo}</b> breakouts</span>`+
+    `<span>▲ <b>${cl}</b> closing in</span>`+
+    `<span>🎯 <b>${nt}</b> near target</span>`+
+    `<span>Prices as of <b>${priceAsof||'…'}</b> · targets/fair values as of Sep 22, 2026</span>`;
+}
+fetch('data.json').then(r=>r.json()).then(data=>{
+  rows = data; rows.forEach(r=>rowByTicker[r.ticker]=r);
+  const sectors = [...new Set(data.map(r=>r.sector).filter(Boolean))].sort();
+  sectors.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; $('sector').appendChild(o); });
+  $('foot').textContent = 'Targets are model outputs (normal-multiple fair value blended with analyst consensus), not investment advice.';
+  render(); renderStats();
+});
+fetch('history.json',{cache:'no-store'}).then(r=>{if(!r.ok)throw 0;return r.json();}).then(j=>{
+  HIST=j.bars||{}; HDATES=j.dates||[]; priceAsof=j.asof||'';
+  const cb=$('chartsbtn'); cb.disabled=false; cb.title='Chart view';
+  render(); renderStats();
+}).catch(()=>{ $('chartsbtn').title='Price history unavailable'; });
+['search','sector','upside','signal'].forEach(id=>$(id).addEventListener('input',render));
+$('sector').addEventListener('change',render); $('upside').addEventListener('change',render); $('signal').addEventListener('change',render);
+document.querySelectorAll('#viewseg button').forEach(b=>b.onclick=()=>{
+  if(b.disabled) return;
+  document.querySelectorAll('#viewseg button').forEach(x=>x.classList.toggle('on',x===b));
+  VIEW=b.dataset.v;
+  $('tablewrap').style.display = VIEW==='table'?'':'none';
+  $('gridview').classList.toggle('show', VIEW==='charts');
+  render();
+});
+</script>
+<script>
+/* ============ chart engine (canvas, same family as ETF radar) ============ */
+const M = {ticker:null, range:22, style:'candle', hover:-1};
+const UP='#26a69a', DN='#ef5350', MUT='#8b98b3', FV='#3fb950', TGT='#58a6ff';
+function fitCanvas(cv,cssH){const dpr=window.devicePixelRatio||1;const w=cv.clientWidth;
+  cv.width=Math.max(1,Math.round(w*dpr));cv.height=Math.round(cssH*dpr);
+  const x=cv.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);return[x,w,cssH];}
+function cLine(x,pts,color,width,dash){x.strokeStyle=color;x.lineWidth=width||1.5;
+  x.setLineDash(dash||[]);x.beginPath();let st=false;
+  for(const p of pts){if(p[1]===null){st=false;continue;}if(!st){x.moveTo(p[0],p[1]);st=true;}else x.lineTo(p[0],p[1]);}x.stroke();x.setLineDash([]);}
+function smaArr(v,n){const o=new Array(v.length).fill(null);let s=0;for(let i=0;i<v.length;i++){s+=v[i];if(i>=n)s-=v[i-n];if(i>=n-1)o[i]=s/n;}return o;}
+function rsiArr(c,n){const o=new Array(c.length).fill(null);if(c.length<=n)return o;let g=0,l=0;
+  for(let i=1;i<=n;i++){const d=c[i]-c[i-1];if(d>0)g+=d;else l-=d;}g/=n;l/=n;
+  o[n]=l===0?100:100-100/(1+g/l);
+  for(let i=n+1;i<c.length;i++){const d=c[i]-c[i-1];g=(g*(n-1)+(d>0?d:0))/n;l=(l*(n-1)+(d<0?-d:0))/n;o[i]=l===0?100:100-100/(1+g/l);}
+  return o;}
+function haBars(bars){const o=[];let po=null,pc=null;
+  for(const b of bars){const c=(b[1]+b[2]+b[3]+b[4])/4;const oo=po===null?(b[1]+b[4])/2:(po+pc)/2;
+    o.push([b[0],oo,Math.max(b[2],oo,c),Math.min(b[3],oo,c),c,b[5]]);po=oo;pc=c;}
+  return o;}
+/* bars for a ticker as [dateStr,O,H,L,C,V] */
+function tickerBars(t){
+  const raw=HIST[t]; if(!raw) return null;
+  return raw.map((b,i)=>[HDATES[i]||'',b[0],b[1],b[2],b[3],b[4]]);
+}
+function hline(x,Xf,Y,v,color,label,pw){
+  const y=Y(v); x.strokeStyle=color; x.setLineDash([6,4]); x.lineWidth=1.4;
+  x.beginPath(); x.moveTo(0,y); x.lineTo(Xf,y); x.stroke(); x.setLineDash([]);
+  x.fillStyle=color; x.font='bold 11px -apple-system,Segoe UI,Roboto,sans-serif';
+  x.fillText(label, Xf+6, y+4);
+}
+/* ---- mini sparkline with FV + target lines ---- */
+function drawSpark(cv,t,fv,tgt){
+  const bars=tickerBars(t); if(!bars||bars.length<5) return;
+  const n=Math.min(90,bars.length), b=bars.slice(-n);
+  const closes=b.map(d=>d[4]);
+  const[x,W,H]=fitCanvas(cv,110);
+  const padR=52,padT=8,padB=4, pw=W-padR, ph=H-padT-padB;
+  let lo=Math.min(...b.map(d=>d[3])), hi=Math.max(...b.map(d=>d[2]));
+  [fv,tgt].forEach(v=>{ if(v!=null){lo=Math.min(lo,v);hi=Math.max(hi,v);} });
+  const pd=(hi-lo)*0.08||1; lo-=pd; hi+=pd;
+  const X=i=>i/Math.max(1,n-1)*pw, Y=v=>padT+(1-(v-lo)/(hi-lo))*ph;
+  x.clearRect(0,0,W,H); x.font='10px -apple-system,Segoe UI,Roboto,sans-serif';
+  x.strokeStyle='#1c2740'; x.fillStyle=MUT; x.lineWidth=1;
+  for(let g=0;g<=2;g++){const v=lo+(hi-lo)*g/2,y=Y(v);
+    x.beginPath();x.moveTo(0,y);x.lineTo(pw,y);x.stroke();
+    x.fillText(v>=100?v.toFixed(0):v.toFixed(1),pw+4,y+3);}
+  const up=closes[n-1]>=closes[0];
+  cLine(x,closes.map((c,i)=>[X(i),Y(c)]),up?UP:DN,1.6);
+  if(fv!=null) hline(x,X,Y,fv,FV,'FV',pw);
+  if(tgt!=null) hline(x,X,Y,tgt,TGT,'TGT',pw);
+}
+function renderGrid(){
+  const list=sortedList(), CAP=150;
+  $('gridnote').textContent = list.length>CAP
+    ? `Showing first ${CAP} of ${list.length.toLocaleString()} — narrow the filters to see more.`
+    : `${list.length.toLocaleString()} stocks · sparklines show ~90 trading days`;
+  $('count').textContent = list.length.toLocaleString() + ' stocks';
+  const g=$('grid'); g.innerHTML='';
+  const frag=document.createDocumentFragment();
+  list.slice(0,CAP).forEach(r=>{
+    const d=document.createElement('div'); d.className='card';
+    const gc=gapClosed(r), sig=signalOf(r);
+    d.innerHTML=`<div class="ctop"><span class="tick">${r.ticker}</span><span class="sig">${sig?SIGNALS[sig]:''}</span></div>
+      <div class="cname">${(r.company||'').replace(/</g,'&lt;')}</div>
+      <canvas></canvas>
+      <div class="cbot"><span>$${r.current_price!=null?r.current_price.toFixed(2):'—'}</span>
+      <span class="${gc==null?'na':(gc>=25?'up':(gc<0?'down':''))}">${gc==null?'gap —':'gap '+gc.toFixed(0)+'%'}</span></div>`;
+    d.onclick=()=>openModal(r.ticker);
+    frag.appendChild(d);
+  });
+  g.appendChild(frag);
+  g.querySelectorAll('.card').forEach((d,i)=>{
+    const r=list[i]; drawSpark(d.querySelector('canvas'),r.ticker,r.fair_value,r.target_price);
+  });
+}
+/* ---- detail modal chart ---- */
+function openModal(t){
+  const r=rowByTicker[t]; if(!r||!HIST||!HIST[t]) return;
+  M.ticker=t; M.hover=-1;
+  $('mtitle').textContent=t+' — '+(r.company||'');
+  $('msub').textContent=(r.sector||'')+' · '+r.notes||'';
+  const gc=gapClosed(r), wc=wkChg(r), sig=signalOf(r);
+  const stat=(l,v,c)=>`<div><span class="lbl">${l}</span><span class="val ${c||''}">${v}</span></div>`;
+  $('mstats').innerHTML=
+    stat('Price',r.current_price!=null?'$'+r.current_price.toFixed(2):'—')+
+    stat('My target',r.target_price!=null?'$'+r.target_price.toFixed(2):'—')+
+    stat('Upside',r.upside_pct!=null?((r.upside_pct>=0?'+':'')+r.upside_pct.toFixed(1)+'%'):'—',r.upside_pct>=0?'up':'down')+
+    stat('Fair value',r.fair_value!=null?'$'+r.fair_value.toFixed(2):'—')+
+    stat('Gap closed',gc!=null?gc.toFixed(0)+'%':'—',gc>=25?'up':(gc<0?'down':''))+
+    stat('1-wk',wc!=null?((wc>=0?'+':'')+wc.toFixed(1)+'%'):'—',wc>=0?'up':'down')+
+    stat('Signal',sig?SIGNALS[sig]:'—');
+  $('overlay').classList.add('show');
+  drawModal();
+}
+function closeModal(){ $('overlay').classList.remove('show'); M.ticker=null; }
+$('mclose').onclick=closeModal;
+$('overlay').addEventListener('click',e=>{ if(e.target===$('overlay')) closeModal(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+document.querySelectorAll('#mrange button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#mrange button').forEach(x=>x.classList.toggle('on',x===b));
+  M.range=+b.dataset.v; M.hover=-1; drawModal();
+});
+document.querySelectorAll('#mstyle button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#mstyle button').forEach(x=>x.classList.toggle('on',x===b));
+  M.style=b.dataset.v; M.hover=-1; drawModal();
+});
+function drawModal(){
+  const cv=$('cprice'), rv=$('crsi');
+  if(!M.ticker||!cv) return;
+  const all=tickerBars(M.ticker); if(!all) return;
+  const r=rowByTicker[M.ticker];
+  const n=M.range>0?Math.min(M.range,all.length):all.length;
+  const b=all.slice(-n);
+  const disp=(M.style==='ha'?haBars(b):b);
+  const closes=b.map(x=>x[4]);
+  const ma20=smaArr(closes,20), ma50=smaArr(closes,50), rsi=rsiArr(closes,14);
+  const[x,W,H]=fitCanvas(cv,300);
+  const padR=64,padB=20,padT=10, volH=(H-padT-padB)*0.2;
+  const pw=W-padR, ph=H-padT-padB;
+  let lo=Infinity,hi=-Infinity;
+  disp.forEach((d,i)=>{lo=Math.min(lo,d[3]);hi=Math.max(hi,d[2]);
+    if(ma20[i]!==null){lo=Math.min(lo,ma20[i]);hi=Math.max(hi,ma20[i]);}
+    if(ma50[i]!==null){lo=Math.min(lo,ma50[i]);hi=Math.max(hi,ma50[i]);}});
+  [r.fair_value,r.target_price].forEach(v=>{if(v!=null){lo=Math.min(lo,v);hi=Math.max(hi,v);}});
+  const pad=(hi-lo)*0.06||1; lo-=pad; hi+=pad;
+  const X=i=>i/Math.max(1,n-1)*pw, Y=v=>padT+(1-(v-lo)/(hi-lo))*ph;
+  const vmax=Math.max(...b.map(d=>d[5]),1);
+  x.clearRect(0,0,W,H); x.font='11px -apple-system,Segoe UI,Roboto,sans-serif';
+  x.strokeStyle='#1c2740'; x.fillStyle=MUT; x.lineWidth=1;
+  for(let g=0;g<=4;g++){const v=lo+(hi-lo)*g/4,y=Y(v);
+    x.beginPath();x.moveTo(0,y);x.lineTo(pw,y);x.stroke();
+    x.fillText(v>=100?v.toFixed(0):v.toFixed(2),pw+6,y+4);}
+  const vy0=padT+ph;
+  b.forEach((d,i)=>{const up=d[4]>=d[1];x.fillStyle=up?'rgba(38,166,154,.4)':'rgba(239,83,80,.4)';
+    const vh=d[5]/vmax*volH;x.fillRect(X(i)-Math.max(1,pw/n*.3),vy0-vh,Math.max(1,pw/n*.6),vh);});
+  const bw=Math.max(1.5,Math.min(14,pw/n*0.62));
+  disp.forEach((d,i)=>{const up=d[4]>=d[1],col=up?UP:DN;x.strokeStyle=col;x.fillStyle=col;
+    const cx=X(i);x.lineWidth=1;x.beginPath();x.moveTo(cx,Y(d[2]));x.lineTo(cx,Y(d[3]));x.stroke();
+    const yO=Y(d[1]),yC=Y(d[4]);
+    x.fillRect(cx-bw/2,Math.min(yO,yC),bw,Math.max(1,Math.abs(yC-yO)));});
+  cLine(x,ma20.map((v,i)=>[X(i),v===null?null:Y(v)]),'#f5a623',1.6);
+  cLine(x,ma50.map((v,i)=>[X(i),v===null?null:Y(v)]),'#b388ff',1.6);
+  if(r.fair_value!=null) hline(x,X,Y,r.fair_value,FV,'FV '+r.fair_value.toFixed(2),pw);
+  if(r.target_price!=null) hline(x,X,Y,r.target_price,TGT,'TGT '+r.target_price.toFixed(2),pw);
+  x.fillStyle=MUT;
+  const step=Math.max(1,Math.floor(n/5));
+  for(let i=0;i<n;i+=step){x.fillText(String(b[i][0]).slice(5),X(i)-14,H-6);}
+  if(M.hover>=0&&M.hover<n){const i=M.hover;x.strokeStyle='rgba(139,152,179,.6)';x.setLineDash([4,4]);
+    x.beginPath();x.moveTo(X(i),padT);x.lineTo(X(i),padT+ph);x.stroke();x.setLineDash([]);
+    const d=b[i],ch=(d[4]/d[1]-1)*100;
+    $('cinfo').textContent=`${d[0]} · O ${d[1].toFixed(2)} H ${d[2].toFixed(2)} L ${d[3].toFixed(2)} C ${d[4].toFixed(2)} (${ch>=0?'+':''}${ch.toFixed(2)}%)`;
+  } else $('cinfo').textContent='';
+  const[rx,rW,rH]=fitCanvas(rv,90);
+  const rpT=6,rpB=16,rph=rH-rpT-rpB,rpW=rW-padR;
+  const RY=v=>rpT+(1-v/100)*rph;
+  rx.clearRect(0,0,rW,rH);rx.font='10px -apple-system,Segoe UI,Roboto,sans-serif';
+  rx.fillStyle='rgba(179,136,255,.08)';rx.fillRect(0,RY(100),rpW,RY(70)-RY(100));rx.fillRect(0,RY(30),rpW,RY(0)-RY(30));
+  rx.strokeStyle='#1c2740';rx.fillStyle=MUT;rx.setLineDash([4,4]);
+  [70,50,30].forEach(v=>{rx.beginPath();rx.moveTo(0,RY(v));rx.lineTo(rpW,RY(v));rx.stroke();rx.fillText(String(v),rpW+6,RY(v)+3);});
+  rx.setLineDash([]);
+  cLine(rx,rsi.map((v,i)=>[i/Math.max(1,n-1)*rpW,v===null?null:RY(v)]),'#b388ff',1.6);
+  if(M.hover>=0&&M.hover<n&&rsi[M.hover]!==null) $('cinfo').textContent+=` · RSI ${rsi[M.hover].toFixed(1)}`;
+}
+$('cprice').onmousemove=e=>{
+  if(!M.ticker) return;
+  const all=tickerBars(M.ticker); if(!all) return;
+  const n=M.range>0?Math.min(M.range,all.length):all.length;
+  const cv=$('cprice'), rect=cv.getBoundingClientRect(), pw=rect.width-64;
+  const i=Math.round((e.clientX-rect.left)/pw*(n-1));
+  M.hover=Math.max(0,Math.min(n-1,i)); drawModal();
+};
+$('cprice').onmouseleave=()=>{M.hover=-1;$('cinfo').textContent='';drawModal();};
+window.addEventListener('resize',()=>{ if(M.ticker) drawModal(); if(VIEW==='charts') renderGrid(); });
 </script>
 </body>
 </html>
