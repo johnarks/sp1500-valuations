@@ -150,7 +150,7 @@
   <div class="msub" id="msub"></div>
   <div id="mstats"></div>
   <div class="mctl">
-    <div class="seg" id="mrange"><button data-v="22" class="on">1M</button><button data-v="66">3M</button><button data-v="0">6M</button></div>
+    <div class="seg" id="mrange"><button data-v="66">3M</button><button data-v="132">6M</button><button data-v="0" class="on">1Y</button></div>
     <div class="seg" id="mstyle"><button data-v="candle">Candles</button><button data-v="ha" class="on">Heikin-Ashi</button></div>
   </div>
   <div class="legend">
@@ -297,7 +297,7 @@ document.querySelectorAll('#viewseg button').forEach(b=>b.onclick=()=>{
 </script>
 <script>
 /* ============ chart engine (canvas, same family as ETF radar) ============ */
-const M = {ticker:null, range:22, style:'ha', hover:-1};
+const M = {ticker:null, range:0, style:'ha', hover:-1};
 const UP='#26a69a', DN='#ef5350', MUT='#8b98b3', FV='#3fb950', TGT='#58a6ff';
 function fitCanvas(cv,cssH){const dpr=window.devicePixelRatio||1;const w=cv.clientWidth;
   cv.width=Math.max(1,Math.round(w*dpr));cv.height=Math.round(cssH*dpr);
